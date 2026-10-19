@@ -53,6 +53,12 @@ We only need publishing and insights, so we use **Instagram Login** and skip the
 
 ## 2. TikTok developer app
 
+> **⚠️ On hold (2026-10-19).** TikTok's Content Sharing Guidelines list "a utility tool to help upload contents to the account(s) you or your team manages" as **not acceptable** for the Content Posting API. That describes our agent, so the audit for public posting would likely fail. Current plan:
+> - **Posting to TikTok:** use an approved scheduler (Metricool, Buffer, Later, …), or post by hand.
+> - **TikTok stats:** check whether the **TikTok API for Business (Organic API → Accounts)** covers a brand's own account. If not, use the scheduler's analytics export.
+>
+> The steps below are kept for reference only.
+
 **You need:** the login for the TikTok Business account, plus a **website** with a Privacy Policy page and a Terms of Service page. TikTok requires both URLs, and you have to prove you own them (see 2.4).
 
 1. **Confirm the handle.** In the TikTok app, go to **Profile**. The handle is the `@name` under the profile photo. Is it `anggrekpermai.offical` (no "i") or `anggrekpermai.official`? If it's misspelled, you can change it under **Edit profile → Username**, once every 30 days. Do that now, before the API app is approved.
