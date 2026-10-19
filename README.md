@@ -58,8 +58,8 @@ Raw footage library ──► 1. Select clips ──► 2. Edit video ──► 
 | Video editing | FFmpeg / MoviePy for scripted editing; a template tool like Creatomate or Shotstack for richer effects |
 | Music | Licensed or royalty-free library (avoid copyright strikes) |
 | Footage storage | Google Drive or cloud storage (S3/GCS) |
-| Instagram | Instagram Graph API (needs a Business/Creator account linked to a Facebook Page) |
-| TikTok | TikTok Content Posting API + Display API (needs developer app approval) |
+| Instagram | Instagram API with Instagram Login (Business account; no Facebook Page needed, see `docs/phase0-setup.md`) |
+| TikTok | TikTok Content Posting API + Display API (needs app review, then an audit before posts can be public) |
 | Data | Simple database (SQLite/Postgres) or Google Sheets for post and metrics history |
 | Reports | Weekly email, Google Doc, or dashboard |
 
@@ -67,8 +67,8 @@ Raw footage library ──► 1. Select clips ──► 2. Edit video ──► 
 
 - [ ] **Phase 0 — Setup:**
   - [x] Business accounts on Instagram and TikTok
-  - [ ] Instagram account linked to a Facebook Page
-  - [ ] Meta and TikTok developer app approvals
+  - [x] ~~Instagram account linked to a Facebook Page~~ (not needed with Instagram Login)
+  - [ ] Meta and TikTok developer apps (walkthrough: `docs/phase0-setup.md`)
   - [ ] Footage library organized and tagged
   - [ ] Baseline metrics recorded (followers, average views per post)
 - [ ] **Phase 1 — Editing:** the agent produces good videos from raw footage, with a human reviewing every video before it's posted
