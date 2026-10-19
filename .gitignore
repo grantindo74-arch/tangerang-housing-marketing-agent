@@ -1,0 +1,15 @@
+# Secrets — never commit API tokens
+.env
+*.env
+secrets/
+
+# Raw and rendered video lives in cloud storage, not git
+*.mp4
+*.mov
+*.m4v
+renders/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
