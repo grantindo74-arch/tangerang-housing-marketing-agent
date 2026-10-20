@@ -1,6 +1,6 @@
 # Tangerang Housing Marketing Agent
 
-An autonomous AI agent that turns raw footage of our residential housing project in Tangerang (outside Jakarta, Indonesia) into short-form marketing videos. It publishes them daily to Instagram and TikTok, tracks how they perform, and improves the content over time.
+A small AI agent that publishes short-form marketing videos for **Anggrek Permai**, our residential housing project in Tangerang (outside Jakarta, Indonesia). It tracks how they perform and sends a weekly report on what works.
 
 ## Goal
 
@@ -8,9 +8,19 @@ Build interest among potential home buyers through steady, engaging short-form v
 
 **End state:**
 - 1–2 short videos are published every day on Instagram Reels and TikTok.
-- Themes vary, and each video has music and effects.
-- The agent runs on its own, from picking footage through to publishing.
-- A weekly report shows which videos perform best, and the content mix shifts toward what works.
+- Engagement is tracked for every post.
+- A weekly report shows which videos perform best and what to make next.
+
+## Scope
+
+**Videos are made outside the agent**, with our own tools, and dropped into a Google Drive folder. The agent does **not** create video content. It only posts, tracks and reports.
+
+| Platform | Posting | Stats |
+|---|---|---|
+| Instagram | Automated by the agent | Pulled automatically by the agent |
+| TikTok | **Manual for now**, posted by hand in the TikTok app | To be decided (manual entry or TikTok API for Business) |
+
+TikTok's developer rules don't allow apps that only post to your own account (see `docs/phase0-setup.md`), so TikTok stays manual unless we adopt an approved scheduler later.
 
 ## Accounts
 
@@ -22,77 +32,63 @@ Build interest among potential home buyers through steady, engaging short-form v
 ## How it works
 
 ```
-Raw footage library ──► 1. Select clips ──► 2. Edit video ──► 3. Write caption ──► 4. Publish
-                                                                                        │
-          ┌─────────────────────────────────────────────────────────────────────────────┘
-          ▼
-   5. Collect metrics ──► 6. Weekly report ──► 7. Adjust content plan ──► (back to 1)
+Our editing tools ──► Google Drive "To Post" ──► 1. Post ──► Drive "Posted"
+                                                    │
+                                                    ▼
+                         3. Weekly report ◄── 2. Track (Google Sheet)
 ```
 
-1. **Select clips.** Pick footage from the raw video library that fits today's theme. Tag clips by scene (exterior, interior, amenities, construction progress, neighborhood, drone) so they're easy to find.
-2. **Edit video.** Cut a vertical 9:16 video, 15–45 seconds long, with music, transitions, text overlays and a call to action.
-3. **Write caption.** Bahasa Indonesia first, with optional English, plus hashtags and a contact or link CTA.
-4. **Publish.** Post to Instagram and TikTok through their official APIs at the best posting times.
-5. **Collect metrics.** Pull views, watch time, likes, comments, shares, saves, follows and link clicks for each post.
-6. **Weekly report.** Rank videos, compare themes, and call out what's working and what isn't.
-7. **Adjust content plan.** Shift next week's theme mix toward the best performers, and keep some room for experiments.
+1. **Post (1–2× a day, Instagram).** Take the next video from Drive `To Post`. Use the caption from a matching text file if there is one; otherwise Claude writes one (Bahasa Indonesia first, plus hashtags and a contact CTA). Publish as a Reel, log it in the Sheet, and move the video to `Posted`.
+2. **Track (daily).** Pull views, reach, likes, comments, shares, saves and follows for each post into a Google Sheet.
+3. **Weekly report.** Claude reads the Sheet and emails a short summary: top and bottom videos, patterns (theme, length, time, hook) and suggestions for next week's videos.
 
-## Content themes (starting rotation)
+## Google Drive layout
 
-| Theme | Example |
+```
+Anggrek Permai Marketing/
+  To Post/     finished vertical videos (optional .txt caption with the same name)
+  Posted/      moved here by the agent after publishing
+```
+
+## Tech stack
+
+| Need | Choice |
 |---|---|
-| Home tour | Walk-through of a show unit, room by room |
-| Construction progress | Before/after or time-lapse of building phases |
-| Lifestyle | "A day living here": morning coffee, kids playing, commute |
-| Amenities | Pool, park, clubhouse, security, playground |
-| Location | Distance to toll roads, malls, schools, airport (CGK), Jakarta |
-| Price and promos | Payment plans, KPR info, limited-time offers |
-| Trends | Trending audio or meme formats adapted to the project |
-| FAQ | Quick answers to common buyer questions |
-
-## Tech stack (proposed)
-
-| Need | Options |
-|---|---|
-| Agent brain / orchestration | Claude (Agent SDK or API) on a daily schedule |
-| Video editing | FFmpeg / MoviePy for scripted editing; a template tool like Creatomate or Shotstack for richer effects |
-| Music | Licensed or royalty-free library (avoid copyright strikes) |
-| Footage storage | Google Drive or cloud storage (S3/GCS) |
-| Instagram | Instagram API with Instagram Login (Business account; no Facebook Page needed, see `docs/phase0-setup.md`) |
-| TikTok | TikTok Content Posting API + Display API (needs app review, then an audit before posts can be public) |
-| Data | Simple database (SQLite/Postgres) or Google Sheets for post and metrics history |
-| Reports | Weekly email, Google Doc, or dashboard |
+| Runs on | Google Cloud: Cloud Run Job + Cloud Scheduler (no always-on server) |
+| Agent brain | Claude via the Anthropic API (captions, weekly report) |
+| Instagram | Instagram API with Instagram Login (Business account; no Facebook Page needed) |
+| Video handoff | Google Drive |
+| Post log and metrics | Google Sheets |
+| Weekly report | Email |
+| Secrets | Google Secret Manager (never in this repo or in chat) |
 
 ## Roadmap
 
-- [ ] **Phase 0 — Setup:**
+- [ ] **Phase 0 — Setup**
   - [x] Business accounts on Instagram and TikTok
-  - [x] ~~Instagram account linked to a Facebook Page~~ (not needed with Instagram Login)
-  - [ ] Meta and TikTok developer apps (walkthrough: `docs/phase0-setup.md`)
-  - [ ] Footage library organized and tagged
+  - [x] ~~Instagram linked to a Facebook Page~~ (not needed with Instagram Login)
+  - [ ] Meta developer app (on hold; steps in `docs/phase0-setup.md`)
+  - [ ] Drive folders `To Post` / `Posted` created
   - [ ] Baseline metrics recorded (followers, average views per post)
-- [ ] **Phase 1 — Editing:** the agent produces good videos from raw footage, with a human reviewing every video before it's posted
-- [ ] **Phase 2 — Publishing:** automated posting to Instagram and TikTok on a schedule
-- [ ] **Phase 3 — Analytics:** metrics collection and weekly report
-- [ ] **Phase 4 — Feedback loop:** the agent adjusts themes and style based on results
-- [ ] **Phase 5 — Full autonomy:** reduce human review to spot checks once quality is proven
+  - [ ] Confirm TikTok handle spelling
+- [ ] **Phase 1 — Instagram posting:** agent posts from Drive on a schedule, with a caption review step at first
+- [ ] **Phase 2 — Tracking:** daily metrics into the Google Sheet
+- [ ] **Phase 3 — Weekly report:** Claude-written summary by email
+- [ ] **Later (optional):** TikTok stats, a scheduler for TikTok posting, in-house video creation (see `docs/style-references.md`)
 
 ## Risks and guardrails
 
-- **Accuracy:** prices, promos and legal claims must be correct. Keep an approved-facts file the agent must use, and never invent numbers.
-- **Music copyright:** only use licensed tracks, especially for business accounts.
-- **Platform rules:** respect API posting limits and terms; TikTok API approval can take time.
-- **Brand safety:** a human approval step until quality is consistent.
+- **Accuracy:** prices, promos and legal claims in captions must be correct. Keep an approved-facts file the agent must use, and never invent numbers.
+- **Platform rules:** respect API posting limits and terms.
+- **Brand safety:** review captions before posting until quality is consistent.
 - **Account security:** store API tokens as secrets, never in this repo.
 
-## Repo structure (planned)
+## Repo structure
 
 ```
-/footage-index    Catalog and tags for raw clips (not the videos themselves)
-/agent            Agent logic: planning, selection, captioning
-/editing          Video templates and editing scripts
-/publishing       Instagram and TikTok posting code
-/analytics        Metrics collection and weekly reports
-/config           Themes, brand guidelines, approved facts
-/docs             Notes and decisions
+/publishing   Instagram posting code
+/analytics    Metrics collection and weekly report
+/config       Approved facts, caption guidelines, schedule
+/docs         Notes and decisions
+/agent, /editing, /footage-index   Reserved for later (content creation is out of scope for now)
 ```
