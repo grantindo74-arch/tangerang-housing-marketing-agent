@@ -1,0 +1,48 @@
+{
+  "_status": "APPROVED - from the facts form returned by the marketing team on 2026-10-21. Only these values may appear in videos, captions and ads. Items under needs_confirmation must not be used until confirmed.",
+  "_source": "Formulir Fakta Resmi Anggrek Permai (completed).docx; codes in brackets refer to the form",
+
+  "brand": "Anggrek Permai",
+  "city": "Tangerang",
+  "unit": "Rumah 2 lantai siap huni",
+  "bedrooms": "4 kamar tidur",
+  "bathrooms": "2 kamar mandi",
+  "rooms": "4 kamar tidur, 2 kamar mandi, ruang tamu, dining area, kitchen, carport, taman depan dan taman belakang",
+  "price": "Harga mulai Rp 800 juta",
+  "cicilan": "Cicilan mulai Rp 4 juta/bulan",
+  "dp": "DP 0%",
+  "booking": "Booking fee Rp 5 juta",
+  "free_costs": "Free semua biaya: AJB, BBN, BPHTB, notaris, PBB dan biaya KPR",
+  "legal": "Legalitas jelas, sertifikat individual per unit",
+  "ready": "Rumah siap huni",
+  "security": "One gate system, keamanan 24 jam, CCTV",
+  "amenities": "Area hijau, sarana bermain anak, sports ground",
+  "access": [
+    "10 menit ke rumah sakit",
+    "10 menit ke sekolah TK-SMA dan universitas",
+    "15 menit ke mall dan CBD",
+    "15 menit ke gerbang tol",
+    "5 menit ke Transjabodetabek"
+  ],
+  "whatsapp": "0851-9980-6283",
+  "disclaimer": "*Syarat & ketentuan berlaku",
+
+  "form_codes": {
+    "price": "A1", "cicilan": "A2", "dp": "A3", "free_costs": "A5", "booking": "A6",
+    "unit": "B1", "rooms": "B2", "legal": "B4", "ready": "B5",
+    "access": "C2", "security": "D1", "amenities": "D2", "whatsapp": "E1", "brand": "E3"
+  },
+
+  "banned_words": ["termurah"],
+
+  "needs_confirmation": {
+    "disclaimer": "Form F1 says no disclaimer is required. We recommend keeping '*Syarat & ketentuan berlaku' next to price, DP 0% and free-cost claims. Confirm with the team.",
+    "cicilan_tenor": "A2 gives 'mulai 4 juta' but not the tenor, rate or unit it applies to. Rp 800 juta with DP 0% normally costs more per month, so confirm the conditions behind the 4 juta figure.",
+    "cicilan_weekly": "The theme document mentions 'cicilan 1 juta per minggu'; it is not on the form. Do not use until confirmed.",
+    "future_mrt": "C2 lists '5 menit ke Future MRT'. A future line is a forward-looking claim; confirm the station name and status before using it, and phrase it as planned.",
+    "address": "C1 only says 'Tangerang'. A full address or Google Maps link is needed for 'lokasi strategis' posts and for buyers.",
+    "free_costs_period": "A5 lists the free-cost promo but no end date."
+  },
+
+  "not_available": ["KPR partner banks (A4)", "electricity / water details (B3)", "total units and developer name (D3)", "marketing office address and hours (E2)"]
+}

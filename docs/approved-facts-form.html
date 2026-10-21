@@ -1,0 +1,310 @@
+<title>Anggrek Permai Fakta Resmi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow reading column; sticky status bar; sections as plain groups, questions as ruled rows */
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --fg: #22201f;
+  --muted: #6b6560;
+  --line: #e2ddd6;
+  --accent: #8a3466;
+  --accent-soft: #f4e6ee;
+  --ok: #2f7a4f;
+  --ok-soft: #e3f1e8;
+  --warn: #9a6512;
+  --warn-soft: #fbf0dc;
+  --font-body: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1817; --surface: #23201f; --fg: #eeeae5; --muted: #a39b94; --line: #3a3532;
+    --accent: #e08bbb; --accent-soft: #3a2230; --ok: #7cc79a; --ok-soft: #1f3327;
+    --warn: #e2b35f; --warn-soft: #3a2e17; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1817; --surface: #23201f; --fg: #eeeae5; --muted: #a39b94; --line: #3a3532;
+  --accent: #e08bbb; --accent-soft: #3a2230; --ok: #7cc79a; --ok-soft: #1f3327;
+  --warn: #e2b35f; --warn-soft: #3a2e17; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.intro { padding-block: 40px 24px; display: grid; gap: 12px; }
+.brand { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 0; font-size: clamp(26px, 5vw, 34px); line-height: 1.15; font-weight: 800; text-wrap: balance; }
+.intro p { margin: 0; max-width: 62ch; color: var(--muted); }
+.intro p strong { color: var(--fg); }
+.howto { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.howto li { display: flex; gap: 8px; }
+.howto li span:first-child { color: var(--accent); font-weight: 700; }
+.en { color: var(--muted); font-size: 13px; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; }
+.progress { flex: 1 1 200px; min-width: 0; display: grid; gap: 4px; }
+.progress-text { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.track { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.save { font-size: 13px; color: var(--muted); }
+.save[data-state="saved"] { color: var(--ok); }
+.save[data-state="error"] { color: var(--warn); }
+button { font: inherit; cursor: pointer; }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); font-weight: 700; font-size: 14px; padding: 8px 14px; border-radius: 8px; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:focus-visible, textarea:focus-visible, input:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main { padding-block: 8px 64px; display: grid; gap: 36px; }
+section.group { display: grid; gap: 0; }
+.group-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 10px; border-bottom: 2px solid var(--fg); }
+.group-head h2 { margin: 0; font-size: 19px; font-weight: 800; }
+.group-head .en { margin-left: auto; }
+.q { display: grid; gap: 8px; padding-block: 18px; border-bottom: 1px solid var(--line); }
+.q-top { display: flex; gap: 10px; align-items: baseline; }
+.q-id { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 2.4em; }
+.q-text { display: grid; gap: 2px; min-width: 0; }
+.q-text label { font-weight: 600; }
+.hint { font-size: 13px; color: var(--muted); }
+textarea, input[type="text"] { width: 100%; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; resize: vertical; }
+textarea { min-height: 64px; }
+.q-body { display: grid; gap: 8px; padding-left: calc(2.4em + 10px); }
+.status { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.chip[aria-pressed="true"][data-v="ok"] { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.chip[aria-pressed="true"][data-v="check"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.chip[aria-pressed="true"][data-v="na"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.finish { display: grid; gap: 12px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.finish h2 { margin: 0; font-size: 19px; }
+.finish p { margin: 0; color: var(--muted); }
+.finish .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#copyOut { width: 100%; min-height: 160px; font-family: var(--font-mono); font-size: 12px; }
+.notice { font-size: 13px; padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); }
+@media (max-width: 520px) { .q-body { padding-left: 0; } .group-head .en { display: none; } }
+@media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+
+<header class="wrap intro">
+  <div class="brand">Anggrek Permai · Tangerang</div>
+  <h1>Formulir Fakta Resmi untuk Konten Marketing</h1>
+  <p>Jawaban di sini akan menjadi <strong>satu-satunya sumber</strong> angka dan klaim yang boleh dipakai di video, caption, dan iklan. Mohon isi dengan data yang benar dan terbaru.</p>
+  <p class="en">Approved-facts form: these answers become the only source for prices and claims used in marketing videos and captions.</p>
+  <ul class="howto">
+    <li><span>•</span><span>Isi yang Anda tahu. Boleh dikosongkan kalau belum ada datanya.</span></li>
+    <li><span>•</span><span>Tandai setiap jawaban: <b>Sudah pasti</b>, <b>Perlu dicek</b>, atau <b>Tidak ada</b>.</span></li>
+    <li><span>•</span><span>Jawaban tersimpan otomatis. Di akhir, tekan <b>Salin semua jawaban</b> sebagai cadangan.</span></li>
+  </ul>
+</header>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="progress">
+      <div class="progress-text" id="progText">0 dari 0 terjawab</div>
+      <div class="track"><div class="fill" id="progFill"></div></div>
+    </div>
+    <span class="save" id="saveState" data-state="idle">Menghubungkan…</span>
+  </div>
+</div>
+
+<main class="wrap" id="form"></main>
+
+<script>
+const GROUPS = [
+  { id: "A", title: "Harga & Pembayaran", en: "Price & payment", qs: [
+    ["price", "Harga mulai per tipe unit (Rupiah, angka lengkap)", "Contoh: Tipe 36/72 Rp 485.000.000"],
+    ["cicilan", "Cicilan per bulan mulai berapa? Untuk tipe apa dan berapa tahun tenornya?", "Contoh: mulai Rp 4.100.000/bln, Tipe 36/72, tenor 20 thn"],
+    ["dp", "Uang muka (DP): berapa rupiah atau persen? Ada promo DP 0% atau DP dicicil?", ""],
+    ["kpr", "Bank rekanan KPR", "Tulis semua bank yang bekerja sama"],
+    ["promo", "Promo yang sedang berjalan dan TANGGAL BERAKHIRNYA", "Contoh: gratis BPHTB & AJB s/d 31 Des 2026"],
+    ["booking", "Booking fee", ""],
+  ]},
+  { id: "B", title: "Unit", en: "Units", qs: [
+    ["types", "Tipe unit: nama, luas bangunan/luas tanah, jumlah lantai", "Contoh: Tipe Melati 45/72, 2 lantai"],
+    ["rooms", "Jumlah kamar tidur dan kamar mandi per tipe", ""],
+    ["specs", "Carport, daya listrik (VA), sumber air (PDAM/sumur)", ""],
+    ["legal", "Jenis sertifikat (SHM/HGB) dan status IMB/PBG", ""],
+    ["ready", "Unit siap huni: tipe apa saja? Sisa berapa unit (kalau boleh disebut)?", ""],
+  ]},
+  { id: "C", title: "Lokasi", en: "Location", qs: [
+    ["address", "Alamat lengkap dan link Google Maps", ""],
+    ["access", "Waktu tempuh / jarak ke gerbang tol, stasiun KRL, mal, sekolah, rumah sakit terdekat", "Sebutkan nama tempatnya dan sumber angkanya (Google Maps, brosur, dll.)"],
+    ["area", "Nama area yang dikenal pembeli", "Contoh: dekat BSD, Tangerang Selatan, Cikupa"],
+  ]},
+  { id: "D", title: "Kawasan & Fasilitas", en: "Estate & amenities", qs: [
+    ["security", "One gate system, satpam 24 jam, CCTV?", ""],
+    ["amenities", "Fasilitas: taman bermain, taman, masjid, clubhouse, jogging track, lainnya", "Tulis mana yang SUDAH JADI dan mana yang MASIH RENCANA"],
+    ["size", "Jumlah total unit di kawasan dan nama developer", ""],
+  ]},
+  { id: "E", title: "Kontak & Brand", en: "Contact & brand", qs: [
+    ["wa", "Nomor WhatsApp untuk calon pembeli", ""],
+    ["office", "Alamat kantor marketing dan jam buka", ""],
+    ["brand", "Penulisan nama resmi, tagline (jika ada), dan di mana file logo bisa diambil", ""],
+    ["avoid", "Kata atau klaim yang TIDAK BOLEH dipakai", "Contoh: \"termurah\", \"pasti untung\""],
+  ]},
+  { id: "F", title: "Legal", en: "Legal", qs: [
+    ["disclaimer", "Disclaimer yang wajib muncul bersama harga", "Contoh: *Syarat & ketentuan berlaku"],
+  ]},
+];
+const STATUS = [["ok", "Sudah pasti"], ["check", "Perlu dicek"], ["na", "Tidak ada"]];
+const ALL = GROUPS.flatMap(g => g.qs.map((q, i) => ({ key: q[0], code: g.id + (i + 1), label: q[1], hint: q[2], group: g })));
+const state = { answers: {}, filledBy: "", notes: "" };
+const pending = {};
+let dbRef = null, writeable = true, writing = Promise.resolve();
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "text") n.textContent = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  kids.forEach(c => c && n.append(c));
+  return n;
+}
+
+function build() {
+  const form = document.getElementById("form");
+  GROUPS.forEach(g => {
+    const sec = el("section", { class: "group", "aria-labelledby": "h-" + g.id });
+    sec.append(el("div", { class: "group-head" },
+      el("span", { class: "q-id", text: g.id }),
+      el("h2", { id: "h-" + g.id, text: g.title }),
+      el("span", { class: "en", text: g.en })));
+    ALL.filter(q => q.group === g).forEach(q => {
+      const ta = el("textarea", { id: "q-" + q.key, rows: "2" });
+      ta.addEventListener("input", () => { setAnswer(q.key, { v: ta.value }); });
+      const chips = el("div", { class: "status", role: "group", "aria-label": "Status jawaban " + q.code });
+      STATUS.forEach(([v, t]) => chips.append(el("button", { type: "button", class: "chip", "data-v": v, "data-q": q.key, "aria-pressed": "false", text: t,
+        onclick: () => { const cur = (state.answers[q.key] || {}).s; setAnswer(q.key, { s: cur === v ? "" : v }); } })));
+      sec.append(el("div", { class: "q" },
+        el("div", { class: "q-top" },
+          el("span", { class: "q-id", text: q.code }),
+          el("div", { class: "q-text" }, el("label", { for: "q-" + q.key, text: q.label }), q.hint ? el("span", { class: "hint", text: q.hint }) : null)),
+        el("div", { class: "q-body" }, ta, chips)));
+    });
+    form.append(sec);
+  });
+  const by = el("input", { type: "text", id: "filledBy", placeholder: "Nama Anda" });
+  by.addEventListener("input", () => { state.filledBy = by.value; queue({ filledBy: by.value }); });
+  const notes = el("textarea", { id: "notes", rows: "3", placeholder: "Catatan lain, atau di mana dokumen pendukung (brosur, pricelist) bisa diambil" });
+  notes.addEventListener("input", () => { state.notes = notes.value; queue({ notes: notes.value }); });
+  const out = el("textarea", { id: "copyOut", readonly: "", hidden: "" });
+  const copyMsg = el("span", { class: "save", id: "copyMsg" });
+  const copyBtn = el("button", { type: "button", class: "btn", text: "Salin semua jawaban", onclick: () => copyAll(out, copyMsg) });
+  form.append(el("section", { class: "finish", "aria-labelledby": "h-finish" },
+    el("h2", { id: "h-finish", text: "Selesai" }),
+    el("label", { for: "filledBy", class: "hint", text: "Diisi oleh" }), by,
+    el("label", { for: "notes", class: "hint", text: "Catatan / lampiran" }), notes,
+    el("p", { text: "Jawaban tersimpan otomatis. Sebagai cadangan, salin dan kirim lewat WhatsApp atau email." }),
+    el("div", { class: "row" }, copyBtn, copyMsg), out));
+}
+
+function render() {
+  ALL.forEach(q => {
+    const a = state.answers[q.key] || {};
+    const ta = document.getElementById("q-" + q.key);
+    if (document.activeElement !== ta && ta.value !== (a.v || "")) ta.value = a.v || "";
+    document.querySelectorAll('.chip[data-q="' + q.key + '"]').forEach(c => c.setAttribute("aria-pressed", String(c.dataset.v === a.s)));
+  });
+  ["filledBy", "notes"].forEach(id => { const n = document.getElementById(id); if (document.activeElement !== n && n.value !== state[id]) n.value = state[id] || ""; });
+  const done = ALL.filter(q => { const a = state.answers[q.key] || {}; return (a.v && a.v.trim()) || a.s === "na"; }).length;
+  document.getElementById("progText").textContent = done + " dari " + ALL.length + " terjawab";
+  document.getElementById("progFill").style.width = (100 * done / ALL.length) + "%";
+}
+
+function setAnswer(key, patch) {
+  state.answers[key] = Object.assign({}, state.answers[key], patch);
+  render();
+  queue({ answers: { [key]: state.answers[key] } });
+}
+
+let timer = null;
+function queue(patch) {
+  merge(pending, patch);
+  saveLocal();
+  if (!dbRef || !writeable) return;
+  setSave("idle", "Menyimpan…");
+  clearTimeout(timer);
+  timer = setTimeout(flush, 700);
+}
+function merge(t, s) { for (const [k, v] of Object.entries(s)) { if (v && typeof v === "object" && !Array.isArray(v)) { t[k] = merge(t[k] || {}, v); } else t[k] = v; } return t; }
+
+function flush() {
+  const body = JSON.parse(JSON.stringify(pending));
+  for (const k of Object.keys(pending)) delete pending[k];
+  if (!Object.keys(body).length) return;
+  body.updatedAt = new Date().toISOString();
+  writing = writing.then(async () => {
+    try {
+      const snap = await dbRef.get();
+      if (snap.exists) await dbRef.update(body); else await dbRef.set(merge({ answers: {}, filledBy: "", notes: "" }, body));
+      setSave("saved", "Tersimpan");
+    } catch (e) {
+      if (e && (e.code === "invalid_argument" || e.code === "not_granted" || e.code === "revoked")) { writeable = false; showReadOnly(); }
+      else { merge(pending, body); setSave("error", "Gagal menyimpan. Coba lagi sebentar."); }
+    }
+  });
+}
+
+function setSave(st, txt) { const s = document.getElementById("saveState"); s.dataset.state = st; s.textContent = txt; }
+function showReadOnly() {
+  setSave("error", "Tidak tersimpan online");
+  if (document.getElementById("roNote")) return;
+  const n = el("p", { class: "notice", id: "roNote", text: "Jawaban Anda belum bisa tersimpan online dari akun ini. Tetap isi formulir, lalu tekan \"Salin semua jawaban\" dan kirim lewat WhatsApp." });
+  document.querySelector(".finish").prepend(n);
+}
+
+function saveLocal() { try { localStorage.setItem("ap-facts-draft", JSON.stringify(state)); } catch (e) {} }
+function loadLocal() { try { const d = JSON.parse(localStorage.getItem("ap-facts-draft") || "null"); if (d) Object.assign(state, d); } catch (e) {} }
+
+function exportText() {
+  const lab = { ok: "PASTI", check: "PERLU DICEK", na: "TIDAK ADA" };
+  const lines = ["FAKTA RESMI ANGGREK PERMAI", "Diisi oleh: " + (state.filledBy || "-"), ""];
+  GROUPS.forEach(g => {
+    lines.push("== " + g.id + ". " + g.title + " ==");
+    ALL.filter(q => q.group === g).forEach(q => {
+      const a = state.answers[q.key] || {};
+      lines.push(q.code + ". " + q.label);
+      lines.push("   " + ((a.v || "").trim() || "-") + (a.s ? "  [" + lab[a.s] + "]" : ""));
+    });
+    lines.push("");
+  });
+  lines.push("Catatan: " + (state.notes || "-"));
+  return lines.join("\n");
+}
+async function copyAll(out, msg) {
+  const t = exportText();
+  out.value = t;
+  try { await navigator.clipboard.writeText(t); msg.textContent = "Tersalin. Tempel di WhatsApp atau email."; out.hidden = true; }
+  catch (e) { out.hidden = false; out.focus(); out.select(); msg.textContent = "Tekan Ctrl+C (atau Salin) untuk menyalin teks di bawah."; }
+}
+
+build();
+loadLocal();
+render();
+
+(async () => {
+  const db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  if (!db) { setSave("error", "Tersimpan di perangkat ini saja"); showReadOnly(); return; }
+  try {
+    const user = await window.claude.use("user");
+    const can = user && user.can ? await user.can("data.write") : null;
+    if (can === false) { writeable = false; showReadOnly(); }
+  } catch (e) {}
+  dbRef = db.doc("forms/facts");
+  let first = true;
+  dbRef.onSnapshot(snap => {
+    const d = snap.exists ? snap.data() : null;
+    if (d) {
+      const ans = {};
+      for (const [k, v] of Object.entries(d.answers || {})) ans[k] = Object.assign({}, v);
+      if (first && !Object.keys(ans).length && Object.keys(state.answers).length) { /* keep local draft; it will be pushed on next edit */ }
+      else { state.answers = merge(ans, pending.answers || {}); state.filledBy = pending.filledBy ?? d.filledBy ?? ""; state.notes = pending.notes ?? d.notes ?? ""; }
+      render();
+    }
+    if (first && writeable) setSave(d ? "saved" : "idle", d ? "Tersimpan" : "Siap");
+    first = false;
+  }, () => setSave("error", "Koneksi terputus. Muat ulang halaman."));
+})();
+</script>

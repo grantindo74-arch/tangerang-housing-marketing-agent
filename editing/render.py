@@ -1,11 +1,13 @@
-"""Render a 15s vertical draft video from a shot-list spec.
+"""Render a 15s vertical video from a shot-list spec, in the AP Sosmed style.
 
 Usage:
   python render.py specs/kunci-rumah.json --raw "G:/My Drive/Claude/Anggrek Permai/Raw video" --out ../drafts
 
 Each spec lists shots (source clip, start, duration, optional text overlay) and
-ends with an end card. Facts in overlay text ({cicilan}, {bedrooms}, ...) are
-filled from a facts file (placeholder-facts.json until the approved facts exist).
+ends with an end card. Facts in overlay text ({cicilan}, {bedrooms}, ...) come
+from config/approved-facts.json. Style follows docs/brand-style.md: logo block
+top-centre, sand hook box with navy Poppins Bold, layout kept inside the
+central 4:5 area so it matches the TikTok covers.
 Needs ffmpeg/ffprobe on PATH (or --ffmpeg-dir) and Pillow.
 """
 import argparse
@@ -17,108 +19,113 @@ import tempfile
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+ASSETS = os.path.join(HERE, "assets")
 W, H, FPS = 1080, 1920, 30
-NAVY, YELLOW, WHITE = (20, 36, 66), (255, 199, 44), (255, 255, 255)
-FONT_BLACK = "C:/Windows/Fonts/seguibl.ttf"
-FONT_BOLD = "C:/Windows/Fonts/segoeuib.ttf"
-FONT_SEMI = "C:/Windows/Fonts/seguisb.ttf"
-FADE = 0.3  # crossfade length for style B
+COVER_TOP = (H - 1350) // 2  # top of the central 4:5 (1080x1350) cover area
+NAVY, WHITE = (0, 31, 75), (255, 255, 255)
+SAND = (217, 173, 127, 196)  # #D9AD7F at 77%
+FONT_BOLD = os.path.join(ASSETS, "fonts", "Poppins-Bold.ttf")
+FONT_SEMI = os.path.join(ASSETS, "fonts", "Poppins-SemiBold.ttf")
+FADE = 0.3  # crossfade length for transition "fade"
 
 
 def font(path, size):
     return ImageFont.truetype(path, size)
 
 
-def text_size(draw, text, f):
+def text_box(draw, text, f):
     box = draw.textbbox((0, 0), text, font=f)
-    return box[2] - box[0], box[3] - box[1], box[1]
+    return box[2] - box[0], box[1]
 
 
-def shadowed(img, draw_fn, blur=10, opacity=150):
-    """Draw text twice: a blurred dark copy for legibility, then the real one."""
-    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw_fn(ImageDraw.Draw(shadow), (0, 0, 0, opacity), offset=4)
-    img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(blur)))
-    draw_fn(ImageDraw.Draw(img), None, offset=0)
+def rounded_box(img, xy, radius, fill, shadow=True):
+    if shadow:
+        sh = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        x0, y0, x1, y1 = xy
+        ImageDraw.Draw(sh).rounded_rectangle((x0, y0 + 8, x1, y1 + 8), radius, fill=(0, 0, 0, 70))
+        img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(14)))
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(layer).rounded_rectangle(xy, radius, fill=fill)
+    img.alpha_composite(layer)
+
+
+def centered_lines(img, lines, f, top, fill, line_h):
+    d = ImageDraw.Draw(img)
+    for i, line in enumerate(lines):
+        w, oy = text_box(d, line, f)
+        d.text(((W - w) // 2, top + i * line_h - oy), line, font=f, fill=fill)
 
 
 def overlay_png(kind, lines, path, y=None):
-    """y: vertical centre of the text as a fraction of frame height (hook only)."""
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    if kind == "hook":
-        f = font(FONT_BLACK, 92 if max(len(l) for l in lines) <= 18 else 76)
-        lh = int(f.size * 1.18)
-        top = int(H * (y or 0.25)) - lh * len(lines) // 2
+    """Text overlay for one shot.
 
-        def draw(dr, color, offset):
-            for i, line in enumerate(lines):
-                w, _, _ = text_size(dr, line, f)
-                xy = ((W - w) // 2 + offset, top + i * lh + offset)
-                if color:
-                    dr.text(xy, line, font=f, fill=color)
-                else:
-                    dr.text(xy, line, font=f, fill=WHITE, stroke_width=3, stroke_fill=(0, 0, 0, 90))
-        shadowed(img, draw, blur=14, opacity=170)
-    elif kind in ("label", "banner"):
-        f = font(FONT_BOLD if kind == "label" else FONT_BLACK, 54 if kind == "label" else 60)
-        fg, bg = (NAVY, YELLOW) if kind == "label" else (YELLOW, NAVY + (235,))
-        lh = int(f.size * 1.25)
-        widths = [text_size(d, l, f)[0] for l in lines]
-        pad_x, pad_y = 34, 22
-        box_w = max(widths) + pad_x * 2
-        box_h = lh * len(lines) + pad_y * 2 - (lh - f.size)
-        x = 64 if kind == "label" else (W - box_w) // 2
-        y = int(H * 0.64)
-        sh = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        ImageDraw.Draw(sh).rounded_rectangle((x + 4, y + 8, x + box_w + 4, y + box_h + 8), 22, fill=(0, 0, 0, 110))
-        img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(10)))
-        d.rounded_rectangle((x, y, x + box_w, y + box_h), 22, fill=bg)
-        for i, line in enumerate(lines):
-            _, _, oy = text_size(d, line, f)
-            d.text((x + pad_x, y + pad_y + i * lh - oy), line, font=f, fill=fg)
+    hook:   the cover's sand box (931 px wide, upper third of the 4:5 area).
+    label:  a smaller sand box lower in frame, for room names and features.
+    banner: navy box with white text, for price and cicilan lines.
+    y: optional top of the box as a fraction of frame height.
+    """
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    if kind == "hook":
+        f = font(FONT_BOLD, 58 if max(len(l) for l in lines) <= 26 else 50)
+        lh = int(f.size * 1.4)
+        box_h = max(244, lh * len(lines) + 70)
+        top = int(H * y) if y else COVER_TOP + 334
+        rounded_box(img, (75, top, 75 + 931, top + box_h), 37, SAND)
+        centered_lines(img, lines, f, top + (box_h - lh * len(lines)) // 2 + int(f.size * 0.2), NAVY, lh)
+    else:
+        f = font(FONT_BOLD, 48)
+        fg, bg = (NAVY, SAND) if kind == "label" else (WHITE, NAVY + (235,))
+        lh = int(f.size * 1.4)
+        d = ImageDraw.Draw(img)
+        box_w = max(text_box(d, l, f)[0] for l in lines) + 96
+        box_h = lh * len(lines) + 44
+        top = int(H * y) if y else COVER_TOP + 1350 - 190 - box_h
+        x0 = (W - box_w) // 2
+        rounded_box(img, (x0, top, x0 + box_w, top + box_h), 30, bg)
+        centered_lines(img, lines, f, top + 22 + int(f.size * 0.2), fg, lh)
+    img.save(path)
+
+
+def logo_png(color, path, scale=1.0, top=None):
+    """Logo block (icon + wordmark) top-centre, as on the covers."""
+    logo = Image.open(os.path.join(ASSETS, f"logo-{color}.png"))
+    if scale != 1.0:
+        logo = logo.resize((round(logo.width * scale), round(logo.height * scale)), Image.LANCZOS)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    img.alpha_composite(logo, ((W - logo.width) // 2, COVER_TOP + 8 if top is None else top))
     img.save(path)
 
 
 def endcard_png(facts, path):
-    img = Image.new("RGBA", (W, H), NAVY + (215,))
-    d = ImageDraw.Draw(img)
+    """Blurred-footage end card: logo, offer box in sand, WhatsApp line."""
+    img = Image.new("RGBA", (W, H), NAVY + (190,))
+    logo = Image.open(os.path.join(ASSETS, "logo-white.png"))
+    logo = logo.resize((round(logo.width * 1.6), round(logo.height * 1.6)), Image.LANCZOS)
+    img.alpha_composite(logo, ((W - logo.width) // 2, 420))
+    f_sub = font(FONT_SEMI, 46)
+    centered_lines(img, [facts["unit"], facts["city"]], f_sub, 680, WHITE, 66)
 
-    def center(text, f, y, fill, spacing=0):
-        if spacing:
-            widths = [text_size(d, c, f)[0] for c in text]
-            total = sum(widths) + spacing * (len(text) - 1)
-            x = (W - total) // 2
-            for c, w in zip(text, widths):
-                d.text((x, y), c, font=f, fill=fill)
-                x += w + spacing
-        else:
-            w, _, _ = text_size(d, text, f)
-            d.text(((W - w) // 2, y), text, font=f, fill=fill)
+    offer = [facts["price"] + "*", facts["dp"] + " · " + facts["cicilan"] + "*"]
+    f_offer = font(FONT_BOLD, 44)
+    lh = int(f_offer.size * 1.45)
+    top, box_h = 860, lh * len(offer) + 70
+    rounded_box(img, (75, top, 75 + 931, top + box_h), 37, SAND[:3] + (235,))
+    centered_lines(img, offer, f_offer, top + 35 + int(f_offer.size * 0.2), NAVY, lh)
 
-    y = 560
-    center(facts["brand"].upper(), font(FONT_BLACK, 104), y, WHITE)
-    center(facts["city"].upper(), font(FONT_BOLD, 46), y + 150, YELLOW, spacing=14)
-    d.line((W // 2 - 90, y + 250, W // 2 + 90, y + 250), fill=YELLOW, width=5)
-    center(facts["unit"], font(FONT_SEMI, 52), y + 290, WHITE)
-    f = font(FONT_BLACK, 56)
-    label = facts["cicilan"] + "*"
-    tw, _, oy = text_size(d, label, f)
-    bx, by = (W - tw - 70) // 2, y + 400
-    d.rounded_rectangle((bx, by, bx + tw + 70, by + 104), 26, fill=YELLOW)
-    d.text((bx + 35, by + 22 - oy), label, font=f, fill=NAVY)
-    center("WhatsApp " + facts["whatsapp"], font(FONT_BOLD, 54), y + 570, WHITE)
-    center(facts["disclaimer"], font(FONT_SEMI, 32), y + 660, (220, 225, 235))
+    f_wa = font(FONT_BOLD, 56)
+    centered_lines(img, ["WhatsApp " + facts["whatsapp"]], f_wa, top + box_h + 70, WHITE, 70)
+    centered_lines(img, [facts["disclaimer"]], font(FONT_SEMI, 30), top + box_h + 170, (225, 230, 240), 40)
     img.save(path)
 
 
 def watermark_png(text, path):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    f = font(FONT_BOLD, 30)
-    tw, th, oy = text_size(d, text, f)
-    d.rounded_rectangle((40, 150, 40 + tw + 36, 150 + th + 24), 14, fill=(200, 30, 40, 200))
-    d.text((58, 162 - oy), text, font=f, fill=WHITE)
+    f = font(FONT_BOLD, 28)
+    tw, oy = text_box(d, text, f)
+    d.rounded_rectangle((40, 120, 40 + tw + 36, 120 + 56), 14, fill=(200, 30, 40, 200))
+    d.text((58, 132 - oy), text, font=f, fill=WHITE)
     img.save(path)
 
 
@@ -138,17 +145,22 @@ BASE = ("scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fp
         "eq=saturation={sat}:contrast=1.04").format(w=W, h=H, fps=FPS, sat="{sat}")
 
 
-def render_shot(ff, src, start, dur, overlay, out, sat, fade_from):
+def render_shot(ff, src, start, dur, overlay, logo, out, sat, fade_from):
+    """logo: static logo-block PNG (no fade) or None; overlay: text PNG that fades in."""
     frames = round(dur * FPS)
     base = BASE.format(sat=sat)
     cmd = [ff, "-y", "-ss", str(start), "-t", str(dur + 0.5), "-i", src]
+    graph, last, idx = f"[0:v]{base}[v0]", "[v0]", 1
+    if logo:
+        cmd += ["-loop", "1", "-i", logo]
+        graph += f";{last}[{idx}:v]overlay=0:0[v{idx}]"
+        last, idx = f"[v{idx}]", idx + 1
     if overlay:
-        cmd += ["-loop", "1", "-i", overlay,
-                "-filter_complex",
-                f"[0:v]{base}[v];[1:v]format=rgba,fade=t=in:st={fade_from}:d=0.25:alpha=1[o];"
-                f"[v][o]overlay=0:0,format=yuv420p"]
-    else:
-        cmd += ["-vf", base + ",format=yuv420p"]
+        cmd += ["-loop", "1", "-i", overlay]
+        graph += (f";[{idx}:v]format=rgba,fade=t=in:st={fade_from}:d=0.25:alpha=1[o];"
+                  f"{last}[o]overlay=0:0[v{idx}]")
+        last = f"[v{idx}]"
+    cmd += ["-filter_complex", graph + f";{last}format=yuv420p"]
     cmd += ["-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "17", out]
     run(cmd)
 
@@ -167,16 +179,15 @@ def main():
     ap.add_argument("spec")
     ap.add_argument("--raw", required=True, help="folder with the raw clips")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--facts", default=os.path.join(os.path.dirname(__file__), "placeholder-facts.json"))
+    ap.add_argument("--facts", default=os.path.join(HERE, "..", "config", "approved-facts.json"))
     ap.add_argument("--endcard-bg", default="IMG_1585.MOV")
     ap.add_argument("--ffmpeg-dir", default="")
-    ap.add_argument("--no-watermark", action="store_true")
     a = ap.parse_args()
 
     ff = os.path.join(a.ffmpeg_dir, "ffmpeg") if a.ffmpeg_dir else "ffmpeg"
     spec = json.load(open(a.spec, encoding="utf-8"))
     facts = json.load(open(a.facts, encoding="utf-8"))
-    placeholder = "PLACEHOLDER" in facts.get("_status", "")
+    placeholder = not facts.get("_status", "").startswith("APPROVED")
     sat = 1.12 if spec["style"] == "A" else 1.05
     os.makedirs(a.out, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="render-")
@@ -194,8 +205,15 @@ def main():
                     ov = os.path.join(tmp, f"text{i:02d}.png")
                     lines = [l.format(**facts) for l in shot["text"]["lines"]]
                     overlay_png(shot["text"]["kind"], lines, ov, shot["text"].get("y"))
+                # Logo block per shot: spec default, overridable per shot ("navy", "white" or "none").
+                color = shot.get("logo", spec.get("logo", "navy"))
+                logo = None
+                if color != "none":
+                    logo = os.path.join(tmp, f"logo-{color}.png")
+                    if not os.path.exists(logo):
+                        logo_png(color, logo)
                 fade_from = 0 if i == 0 else 0.2
-                render_shot(ff, find_src(a.raw, shot["src"]), shot["start"], shot["dur"], ov, seg, sat, fade_from)
+                render_shot(ff, find_src(a.raw, shot["src"]), shot["start"], shot["dur"], ov, logo, seg, sat, fade_from)
             segs.append(seg)
             durs.append(shot["dur"])
 
@@ -211,18 +229,17 @@ def main():
         else:
             graph = "".join(f"[{i}:v]" for i in range(n)) + f"concat=n={n}:v=1:a=0[x{n - 1}]"
             prev, total = f"[x{n - 1}]", sum(durs)
-        audio_idx = n
-        if placeholder and not a.no_watermark:
+        extra = 0
+        if placeholder:
             wm = os.path.join(tmp, "wm.png")
             watermark_png("DRAFT · DATA CONTOH", wm)
             inputs += ["-loop", "1", "-i", wm]
-            graph += f";{prev}[{n}:v]overlay=0:0:shortest=1[vout]"
-            audio_idx += 1
-        else:
-            graph += f";{prev}null[vout]"
+            graph += f";{prev}[{n + extra}:v]overlay=0:0:shortest=1[wm]"
+            prev, extra = "[wm]", extra + 1
+        graph += f";{prev}null[vout]"
         out = os.path.join(a.out, spec["name"] + ".mp4")
         run([ff, "-y", *inputs, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-             "-filter_complex", graph, "-map", "[vout]", "-map", f"{audio_idx}:a",
+             "-filter_complex", graph, "-map", "[vout]", "-map", f"{n + extra}:a",
              "-t", f"{total:.3f}", "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-pix_fmt", "yuv420p",
              "-r", str(FPS), "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", out])
         print(f"{out}  {total:.1f}s")

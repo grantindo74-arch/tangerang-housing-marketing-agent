@@ -3,6 +3,7 @@
   "title": "Kunci rumah barumu sudah siap",
   "style": "B",
   "transition": "fade",
+  "logo": "navy",
   "shots": [
     {"src": "IMG_1588.MOV", "start": 1.6, "dur": 3.0, "text": {"kind": "hook", "lines": ["Kunci rumah barumu", "sudah siap."]}},
     {"src": "IMG_1592.MOV", "start": 0.5, "dur": 2.7},
