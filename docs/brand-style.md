@@ -29,8 +29,9 @@ Values below were read from the design's element data on 2026-10-21 (pages 1 and
 
 ## Text on video (different from the covers)
 
-Team rules, 2026-10-21:
+Team rules, 2026-10-21. These are the **TikTok** rules; Instagram is calmer and more formal (see `docs/platform-strategy.md`).
 
+- **Text on every screen.** Each shot keeps the previous text or shows a new short one; never a shot without text.
 - **Short.** One or two short pieces of info at a time, a few words each. This applies to post captions too.
 - **White on black** (TikTok-style box per line) or **black on white**. The sand box below is for thumbnails only, never on video.
 - **Middle of the screen**, not at the bottom.

@@ -1,15 +1,16 @@
 {
   "name": "kunci-rumah",
   "title": "Rumahmu sudah siap",
-  "style": "B",
-  "transition": "fade",
+  "platform": "tiktok",
+  "style": "A",
+  "transition": "flash",
   "logo": "navy",
   "shots": [
-    {"src": "IMG_1588.MOV", "start": 1.6, "dur": 3.0, "text": {"kind": "hook", "lines": ["Rumahmu sudah siap 🔑"]}},
-    {"src": "IMG_1592.MOV", "start": 0.5, "dur": 2.7},
-    {"src": "IMG_1593.MOV", "start": 0.0, "dur": 2.8},
-    {"src": "IMG_1384.MOV", "start": 5.0, "dur": 2.5},
-    {"src": "IMG_1400.MOV", "start": 5.5, "dur": 2.6, "text": {"kind": "label", "lines": ["{bedrooms} 🛏️"]}},
-    {"endcard": true, "dur": 3.0, "offer": "{cicilan_short}* 🏡"}
+    {"src": "IMG_1588.MOV", "start": 1.6, "dur": 2.6, "text": {"lines": ["Rumahmu sudah siap 🔑"]}},
+    {"src": "IMG_1592.MOV", "start": 0.5, "dur": 2.4, "text": {"lines": ["Rumah Siap Huni 🏡"]}},
+    {"src": "IMG_1593.MOV", "start": 0.0, "dur": 2.6, "transition": "cut", "add": ["{cicilan_short}* 💸"]},
+    {"src": "IMG_1384.MOV", "start": 5.0, "dur": 2.2},
+    {"src": "IMG_1400.MOV", "start": 5.5, "dur": 2.6, "cta": "Yuk, lihat unitnya langsung 👀"},
+    {"src": "IMG_1401.MOV", "start": 1.0, "dur": 2.4, "transition": "cut"}
   ]
 }

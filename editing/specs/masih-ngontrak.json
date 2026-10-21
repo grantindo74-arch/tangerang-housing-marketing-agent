@@ -1,16 +1,16 @@
 {
   "name": "masih-ngontrak",
   "title": "Masih ngontrak?",
+  "platform": "tiktok",
   "style": "A",
-  "transition": "cut",
+  "transition": "flash",
   "logo": "navy",
   "shots": [
-    {"src": "7a4298a5-7dda-4861-8946-55b1f5107d81.mp4", "start": 0.5, "dur": 2.2, "logo": "none", "text": {"kind": "hook", "y": 0.62, "lines": ["Masih ngontrak? 😩"]}},
-    {"src": "d10fec67-4791-4e3c-99b1-941592ad00e7.mp4", "start": 2.0, "dur": 2.0},
-    {"src": "IMG_1585.MOV", "start": 0.0, "dur": 2.2, "text": {"kind": "hook", "lines": ["Punya rumah sendiri yuk 🏡"]}},
-    {"src": "IMG_1590.MOV", "start": 1.0, "dur": 2.4},
-    {"src": "IMG_1593.MOV", "start": 0.4, "dur": 2.0},
-    {"src": "IMG_1381.MOV", "start": 6.0, "dur": 2.0},
-    {"endcard": true, "dur": 2.8, "offer": "{dp}* 🔥"}
+    {"src": "IMG_1584.MOV", "start": 2.0, "dur": 2.2, "text": {"lines": ["Masih ngontrak? 😩"]}},
+    {"src": "IMG_1585.MOV", "start": 0.0, "dur": 2.2, "add": ["Punya rumah sendiri yuk 🏡"]},
+    {"src": "IMG_1590.MOV", "start": 1.0, "dur": 2.4, "transition": "cut", "text": {"lines": ["{dp}* 🔥"]}},
+    {"src": "IMG_1593.MOV", "start": 0.4, "dur": 2.2, "add": ["{cicilan_short}* 💸"]},
+    {"src": "IMG_1381.MOV", "start": 6.0, "dur": 2.4, "cta": "Yuk, lihat unitnya langsung 👀"},
+    {"src": "IMG_1384.MOV", "start": 5.0, "dur": 2.6, "transition": "cut"}
   ]
 }

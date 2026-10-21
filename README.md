@@ -1,19 +1,21 @@
 # Tangerang Housing Marketing Agent
 
-A small AI agent that publishes short-form marketing videos for **Anggrek Permai**, our residential housing project in Tangerang (outside Jakarta, Indonesia). It tracks how they perform and sends a weekly report on what works.
+A small AI agent that makes, publishes and tracks short-form marketing content for **Anggrek Permai**, our residential housing project in Tangerang (outside Jakarta, Indonesia).
 
 ## Goal
 
-Build interest among potential home buyers through steady, engaging short-form video.
+**Get potential buyers to contact us directly on WhatsApp (0851-9980-6283).** Every video and post exists to drive that.
 
-**End state:**
-- 1–2 short videos are published every day on Instagram Reels and TikTok.
-- Engagement is tracked for every post.
-- A weekly report shows which videos perform best and what to make next.
+**End state** (confirmed by the team on 2026-10-21):
+1. **Make** the designs: videos and posts, built from our real footage in the campaign style (`editing/`, `docs/brand-style.md`, `docs/platform-strategy.md`).
+2. **Post** them: 1–2 a day on TikTok and Instagram.
+3. **Check engagement** on every post: saves, comments, shares, likes and views.
+4. **Count WhatsApp contacts** and link them back to the post that brought them in, since that is the number that matters.
+5. A weekly report on which videos bring saves, comments and WhatsApp contacts, and what to make next.
 
 ## Scope
 
-**Videos are made outside the agent**, with our own tools, and dropped into a Google Drive folder. The agent does **not** create video content. It only posts, tracks and reports.
+The agent now covers the whole loop: **make → post → track → report**. Video creation was originally out of scope; it moved in once the render pipeline (`editing/render.py`) was working.
 
 | Platform | Posting | Stats |
 |---|---|---|
@@ -32,15 +34,16 @@ TikTok's developer rules don't allow apps that only post to your own account (se
 ## How it works
 
 ```
-Our editing tools ──► Google Drive "To Post" ──► 1. Post ──► Drive "Posted"
-                                                    │
-                                                    ▼
-                         3. Weekly report ◄── 2. Track (Google Sheet)
+0. Make (editing/render.py) ──► Google Drive "To Post" ──► 1. Post ──► Drive "Posted"
+                                                              │
+                                                              ▼
+                 3. Weekly report ◄── 2. Track engagement + WhatsApp contacts (Google Sheet)
 ```
 
+0. **Make.** Shot lists in `editing/specs/` are rendered from the raw footage with `editing/render.py`, using only approved facts. Drafts go to the team for review before posting.
 1. **Post (1–2× a day, Instagram).** Take the next video from Drive `To Post`. Use the caption from a matching text file if there is one; otherwise Claude writes one (Bahasa Indonesia first, plus hashtags and a contact CTA). Publish as a Reel, log it in the Sheet, and move the video to `Posted`.
-2. **Track (daily).** Pull views, reach, likes, comments, shares, saves and follows for each post into a Google Sheet.
-3. **Weekly report.** Claude reads the Sheet and emails a short summary: top and bottom videos, patterns (theme, length, time, hook) and suggestions for next week's videos.
+2. **Track (daily).** Pull views, reach, likes, comments, shares, saves and follows for each post into a Google Sheet. **WhatsApp contacts** are logged in the same Sheet: each post's caption links to WhatsApp with a short pre-filled message that names the post (for example "Halo, saya lihat video Rumah Siap Huni"), so the team can see which post a chat came from. How the team records chats (by hand, or WhatsApp Business labels) is still to be decided.
+3. **Weekly report.** Claude reads the Sheet and emails a short summary: which videos brought the most saves, comments and WhatsApp contacts, patterns (theme, length, hook, time) and suggestions for next week's videos.
 
 ## Google Drive layout
 
@@ -71,10 +74,16 @@ Anggrek Permai Marketing/
   - [ ] Drive folders `To Post` / `Posted` created
   - [ ] Baseline metrics recorded (followers, average views per post)
   - [ ] Confirm TikTok handle spelling
-- [ ] **Phase 1 — Instagram posting:** agent posts from Drive on a schedule, with a caption review step at first
-- [ ] **Phase 2 — Tracking:** daily metrics into the Google Sheet
-- [ ] **Phase 3 — Weekly report:** Claude-written summary by email
-- [ ] **Later (optional):** TikTok stats, a scheduler for TikTok posting, in-house video creation (see `docs/style-references.md`)
+- [ ] **Phase 0.5 — Make content** (in progress)
+  - [x] Footage catalog (`footage-index/catalog.csv`)
+  - [x] Approved facts, brand style, platform strategy, hook bank
+  - [x] Render pipeline in the posted-TikTok style (`editing/render.py`)
+  - [ ] First TikToks approved by the team, with music
+  - [ ] Instagram (calmer, longer) template
+- [ ] **Phase 1 — Posting:** Instagram posted by the agent from Drive on a schedule, with a caption review step at first; TikTok by hand
+- [ ] **Phase 2 — Tracking:** daily engagement (saves, comments, shares, likes, views) plus WhatsApp contacts per post into the Google Sheet
+- [ ] **Phase 3 — Weekly report:** Claude-written summary by email, ranked by saves, comments and WhatsApp contacts
+- [ ] **Later (optional):** TikTok stats via API or a scheduler; replying to comments
 
 ## Risks and guardrails
 
@@ -90,5 +99,7 @@ Anggrek Permai Marketing/
 /analytics    Metrics collection and weekly report
 /config       Approved facts, caption guidelines, schedule
 /docs         Notes and decisions
-/agent, /editing, /footage-index   Reserved for later (content creation is out of scope for now)
+/editing      Render pipeline, shot lists (specs/) and assets (logo, fonts)
+/footage-index  Catalog of the raw footage
+/agent        Reserved for later
 ```

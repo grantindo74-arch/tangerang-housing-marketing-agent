@@ -1,13 +1,25 @@
-"""Render a 15s vertical video from a shot-list spec, in the AP Sosmed style.
+"""Render a vertical TikTok-style video from a shot-list spec.
 
 Usage:
   python render.py specs/kunci-rumah.json --raw "G:/My Drive/Claude/Anggrek Permai/Raw video" --out ../drafts
 
-Each spec lists shots (source clip, start, duration, optional text overlay) and
-ends with an end card. Facts in overlay text ({cicilan}, {bedrooms}, ...) come
-from config/approved-facts.json. Style follows docs/brand-style.md: logo block
-top-centre as on the covers; on-video text is short, white on black (or black
-on white) in the middle of the frame, with emoji; WhatsApp number green on white.
+The look follows the team's posted TikToks (docs/platform-strategy.md):
+large navy logo top-centre on every shot; bold white outlined text in the
+middle of the frame, with emoji; lines that build up shot by shot; a closing
+call to action over the last real shots, with a white phone pill (green icon
+and number) and a location line; quick flash cuts between some shots.
+
+Spec format (JSON):
+  name, transition ("cut" | "flash" | "fade", default for every join), logo ("navy" | "white"),
+  shots: [{src, start, dur, ...one of:
+      "text": {"lines": [...], "style": "outline" | "dark" | "light", "y": 0.44, "align": "center" | "left"}
+              replace the text on screen (fades in)
+      "add":  [...]            append lines under the current text (only the new lines fade in)
+      "cta":  "Yuk, lihat unitnya langsung"   switch to the call to action (line + phone pill + location)
+      nothing                  keep the previous shot's text (every screen carries text)
+    optional "transition" (join into this shot), "logo": "none" | "navy" | "white"}]
+  A legacy {"endcard": true, "dur": ..., "offer": ...} shot is still supported.
+Facts in text ({cicilan_short}, {dp}, ...) come from config/approved-facts.json.
 Needs ffmpeg/ffprobe on PATH (or --ffmpeg-dir) and Pillow.
 """
 import argparse
@@ -17,24 +29,30 @@ import shutil
 import subprocess
 import tempfile
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "assets")
 W, H, FPS = 1080, 1920, 30
-COVER_TOP = (H - 1350) // 2  # top of the central 4:5 (1080x1350) cover area
 NAVY, WHITE, BLACK = (0, 31, 75), (255, 255, 255), (0, 0, 0)
 WA_GREEN = (18, 140, 62)  # darker WhatsApp green, readable on white
+WA_BADGE = (37, 180, 80)  # green circle behind the phone icon
 FONT_BOLD = os.path.join(ASSETS, "fonts", "Poppins-Bold.ttf")
 FONT_SEMI = os.path.join(ASSETS, "fonts", "Poppins-SemiBold.ttf")
 FONT_EMOJI = "C:/Windows/Fonts/seguiemj.ttf"
-FADE = 0.3  # crossfade length for transition "fade"
+FONT_ICONS = "C:/Windows/Fonts/segmdl2.ttf"  # Segoe MDL2 Assets, for the phone glyph
+PHONE_GLYPH = "\uE717"
 
-# On-video text styles (TikTok-native): text colour, box colour.
-# The sand box from docs/brand-style.md is for thumbnails only, never on video.
+LOGO_WIDTH, LOGO_TOP = 486, 90  # about 45% of frame width, as in the posted TikToks
+TEXT_TOP = 0.44                 # top of the text block, as a fraction of frame height
+TEXT_SIZE = 60
+TRANSITIONS = {"cut": ("fade", 1 / FPS), "flash": ("fadewhite", 0.25), "fade": ("fade", 0.3)}
+
+# Box styles: text colour, box colour. "outline" (no box) is the default on video;
+# the sand box from docs/brand-style.md is for thumbnails only.
 STYLES = {
-    "dark": (WHITE, BLACK + (230,)),   # white on black, the default
-    "light": (BLACK, WHITE + (240,)),  # black on white
+    "dark": (WHITE, BLACK + (230,)),
+    "light": (BLACK, WHITE + (240,)),
     "phone": (WA_GREEN, WHITE + (245,)),
 }
 
@@ -64,74 +82,111 @@ def rich_width(draw, text, f, fe):
     return sum(draw.textlength(c, font=fe if e else f) for e, c in runs(text))
 
 
-def draw_rich(draw, x, baseline, text, f, fe, fill):
+def draw_rich(draw, x, baseline, text, f, fe, fill, stroke=0, stroke_fill=None):
     for e, chunk in runs(text):
         if e:
             draw.text((x, baseline), chunk, font=fe, anchor="ls", embedded_color=True)
             x += draw.textlength(chunk, font=fe)
         else:
-            draw.text((x, baseline), chunk, font=f, anchor="ls", fill=fill)
+            draw.text((x, baseline), chunk, font=f, anchor="ls", fill=fill,
+                      stroke_width=stroke, stroke_fill=stroke_fill)
             x += draw.textlength(chunk, font=f)
 
 
-def text_lines(img, lines, center_y, style="dark", size=60):
-    """TikTok-style caption: one rounded box per line, stacked, centred at center_y."""
-    fg, bg = STYLES[style]
-    f, fe = font(FONT_BOLD, size), font(FONT_EMOJI, int(size * 0.9))
-    pad_x, line_h = int(size * 0.45), int(size * 1.5)
-    top = int(center_y - line_h * len(lines) / 2)
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
-    for i, line in enumerate(lines):
-        w = rich_width(d, line, f, fe)
-        x0, y0 = (W - w) / 2 - pad_x, top + i * line_h
-        d.rounded_rectangle((x0, y0, x0 + w + 2 * pad_x, y0 + line_h), int(size * 0.3), fill=bg)
-    img.alpha_composite(layer)
-    d = ImageDraw.Draw(img)
-    for i, line in enumerate(lines):
-        w = rich_width(d, line, f, fe)
-        draw_rich(d, (W - w) / 2, top + i * line_h + int(line_h * 0.7), line, f, fe, fg)
+def text_block(img, lines, top, style="outline", size=TEXT_SIZE, align="center", skip=0):
+    """Draw a block of lines starting at `top`, one line per row.
 
-
-def overlay_png(kind, lines, path, y=None, style=None):
-    """Text overlay for one shot, in the middle of the frame.
-
-    kind is kept for older specs: "banner" defaults to the light style, the rest to dark.
-    y: optional vertical centre as a fraction of frame height (default 0.5).
+    Positions depend only on the line index, so a block that grows shot by shot
+    keeps earlier lines in place. `skip` leaves out the first lines (used to draw
+    only the newly added ones). Returns the y just below the block.
     """
+    f, fe = font(FONT_BOLD, size), font(FONT_EMOJI, int(size * 1.1))
+    d = ImageDraw.Draw(img)
+    widths = [rich_width(d, l, f, fe) for l in lines]
+    line_h = int(size * (1.35 if style == "outline" else 1.5))
+    left = (W - max(widths)) / 2 if widths else 0
+    xs = [left if align == "left" else (W - w) / 2 for w in widths]
+    shown = range(skip, len(lines))
+    if style == "outline":
+        # Soft drop shadow first, then white text with a dark outline.
+        shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shadow)
+        for i in shown:
+            draw_rich(sd, xs[i] + 3, top + i * line_h + int(line_h * 0.75) + 4, lines[i], f, fe,
+                      (0, 0, 0, 150), stroke=size // 10, stroke_fill=(0, 0, 0, 150))
+        img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(6)))
+        for i in shown:
+            draw_rich(d, xs[i], top + i * line_h + int(line_h * 0.75), lines[i], f, fe,
+                      WHITE, stroke=max(3, size // 14), stroke_fill=(0, 0, 0, 220))
+    else:
+        fg, bg = STYLES[style]
+        pad_x = int(size * 0.45)
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ld = ImageDraw.Draw(layer)
+        for i in shown:
+            y0 = top + i * line_h
+            ld.rounded_rectangle((xs[i] - pad_x, y0, xs[i] + widths[i] + pad_x, y0 + line_h),
+                                 int(size * 0.3), fill=bg)
+        img.alpha_composite(layer)
+        for i in shown:
+            draw_rich(d, xs[i], top + i * line_h + int(line_h * 0.7), lines[i], f, fe, fg)
+    return top + len(lines) * line_h
+
+
+def phone_pill(img, number, top):
+    """White pill with a green phone badge on the left and the number in green."""
+    f = font(FONT_BOLD, 54)
+    d = ImageDraw.Draw(img)
+    h = 104
+    tw = d.textlength(number, font=f)
+    w = h + 30 + tw + 50
+    x0 = (W - w) / 2
+    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle((x0, top + 6, x0 + w, top + h + 6), h // 2, fill=(0, 0, 0, 90))
+    img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(8)))
+    d.rounded_rectangle((x0, top, x0 + w, top + h), h // 2, fill=WHITE)
+    d.rounded_rectangle((x0 - 6, top - 6, x0 + h + 6, top + h + 6), 30, fill=WA_BADGE)
+    d.text((x0 + h / 2, top + h / 2), PHONE_GLYPH, font=font(FONT_ICONS, 52), fill=WHITE, anchor="mm")
+    d.text((x0 + h + 30, top + h / 2), number, font=f, fill=WA_GREEN, anchor="lm")
+    return top + h
+
+
+def overlay_text(path, lines, style="outline", y=None, align="center", skip=0):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    style = style or ("light" if kind == "banner" else "dark")
-    text_lines(img, lines, H * (y or 0.5), style, 64 if kind == "hook" else 56)
+    text_block(img, lines, int(H * (y or TEXT_TOP)), style, TEXT_SIZE, align, skip)
     img.save(path)
 
 
-def logo_png(color, path, scale=1.0, top=None):
-    """Logo block (icon + wordmark) top-centre, as on the covers."""
-    logo = Image.open(os.path.join(ASSETS, f"logo-{color}.png"))
-    if scale != 1.0:
-        logo = logo.resize((round(logo.width * scale), round(logo.height * scale)), Image.LANCZOS)
+def overlay_cta(path, line, facts, y=None, disclaimer=False):
+    """Closing call to action: one line, the phone pill, a 📍 location line,
+    and the small disclaimer when an earlier claim carried an asterisk."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    img.alpha_composite(logo, ((W - logo.width) // 2, COVER_TOP + 8 if top is None else top))
+    bottom = text_block(img, [line], int(H * (y or TEXT_TOP)), "outline", 56)
+    bottom = phone_pill(img, facts["whatsapp"], bottom + 16)
+    bottom = text_block(img, ["\U0001F4CD " + facts["location"]], bottom + 18, "outline", 48)
+    if disclaimer:
+        text_block(img, [facts["disclaimer"]], bottom + 6, "outline", 30)
+    img.save(path)
+
+
+def logo_png(color, path):
+    """Large logo block (icon + wordmark), top-centre."""
+    logo = Image.open(os.path.join(ASSETS, f"logo-{color}.png"))
+    scale = LOGO_WIDTH / logo.width
+    logo = logo.resize((LOGO_WIDTH, round(logo.height * scale)), Image.LANCZOS)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    img.alpha_composite(logo, ((W - logo.width) // 2, LOGO_TOP))
     img.save(path)
 
 
 def endcard_png(facts, offer, path):
-    """Blurred-footage end card: logo, ONE short offer, WhatsApp number in the middle.
-
-    Kept to a single fact on purpose: a 15s video leaves about 3s to read it.
-    Offer is black on white; the phone number is green on white.
-    """
+    """Legacy blurred-footage end card: logo, one offer, WhatsApp pill."""
     img = Image.new("RGBA", (W, H), NAVY + (170,))
     logo = Image.open(os.path.join(ASSETS, "logo-white.png"))
-    logo = logo.resize((round(logo.width * 1.6), round(logo.height * 1.6)), Image.LANCZOS)
-    img.alpha_composite(logo, ((W - logo.width) // 2, int(H * 0.5) - 330))
-    text_lines(img, [offer], H * 0.5 + 10, "light", 66)
-    text_lines(img, ["WA " + facts["whatsapp"]], H * 0.5 + 150, "phone", 56)
-    if "*" in offer:
-        d = ImageDraw.Draw(img)
-        f = font(FONT_SEMI, 28)
-        t = facts["disclaimer"]
-        d.text(((W - d.textlength(t, font=f)) / 2, H * 0.5 + 240), t, font=f, fill=(230, 233, 240))
+    logo = logo.resize((LOGO_WIDTH, round(logo.height * LOGO_WIDTH / logo.width)), Image.LANCZOS)
+    img.alpha_composite(logo, ((W - logo.width) // 2, int(H * 0.5) - 360))
+    bottom = text_block(img, [offer], int(H * 0.5) - 40, "light", 66)
+    phone_pill(img, facts["whatsapp"], bottom + 30)
     img.save(path)
 
 
@@ -140,8 +195,8 @@ def watermark_png(text, path):
     d = ImageDraw.Draw(img)
     f = font(FONT_BOLD, 28)
     tw = d.textlength(text, font=f)
-    d.rounded_rectangle((40, 120, 40 + tw + 36, 120 + 56), 14, fill=(200, 30, 40, 200))
-    d.text((58, 158), text, font=f, fill=WHITE, anchor="ls")
+    d.rounded_rectangle((40, 40, 40 + tw + 36, 40 + 56), 14, fill=(200, 30, 40, 200))
+    d.text((58, 78), text, font=f, fill=WHITE, anchor="ls")
     img.save(path)
 
 
@@ -161,23 +216,18 @@ BASE = ("scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fp
         "eq=saturation={sat}:contrast=1.04").format(w=W, h=H, fps=FPS, sat="{sat}")
 
 
-def render_shot(ff, src, start, dur, overlay, logo, out, sat, fade_from):
-    """logo: static logo-block PNG (no fade) or None; overlay: text PNG that fades in."""
+def render_shot(ff, src, start, dur, layers, out, sat):
+    """layers: [(png, fade_from or None)], drawn in order; None means visible from the first frame."""
     frames = round(dur * FPS)
-    base = BASE.format(sat=sat)
     cmd = [ff, "-y", "-ss", str(start), "-t", str(dur + 0.5), "-i", src]
-    graph, last, idx = f"[0:v]{base}[v0]", "[v0]", 1
-    if logo:
-        cmd += ["-loop", "1", "-i", logo]
-        graph += f";{last}[{idx}:v]overlay=0:0[v{idx}]"
-        last, idx = f"[v{idx}]", idx + 1
-    if overlay:
-        cmd += ["-loop", "1", "-i", overlay]
-        graph += (f";[{idx}:v]format=rgba,fade=t=in:st={fade_from}:d=0.25:alpha=1[o];"
-                  f"{last}[o]overlay=0:0[v{idx}]")
+    graph, last = f"[0:v]{BASE.format(sat=sat)}[v0]", "[v0]"
+    for idx, (png, fade_from) in enumerate(layers, start=1):
+        fade = "" if fade_from is None else f",fade=t=in:st={fade_from}:d=0.25:alpha=1"
+        cmd += ["-loop", "1", "-i", png]
+        graph += f";[{idx}:v]format=rgba{fade}[o{idx}];{last}[o{idx}]overlay=0:0[v{idx}]"
         last = f"[v{idx}]"
-    cmd += ["-filter_complex", graph + f";{last}format=yuv420p"]
-    cmd += ["-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "17", out]
+    cmd += ["-filter_complex", graph + f";{last}format=yuv420p",
+            "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "17", out]
     run(cmd)
 
 
@@ -188,6 +238,48 @@ def render_endcard(ff, bg_src, card, dur, out):
          f"setpts=N/{FPS}/TB[bg];[1:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1[o];"
          f"[bg][o]overlay=0:0,format=yuv420p",
          "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "17", out])
+
+
+def plan_text(spec, facts, tmp):
+    """Work out the text layers for every shot.
+
+    Returns one list per shot of (png, fade_from) pairs: what is already on
+    screen (no fade) and what appears in this shot (fades in).
+    """
+    fill = lambda lines: [l.format(**facts) for l in lines]
+    plans, lines, opts, current = [], [], {}, None
+    starred = any("*" in l for s in spec["shots"] for l in s.get("text", {}).get("lines", []) + s.get("add", []))
+    for i, shot in enumerate(spec["shots"]):
+        appear = 0 if i == 0 else 0.15
+        png = os.path.join(tmp, f"text{i:02d}.png")
+        if shot.get("endcard"):
+            plans.append([])
+            continue
+        if "text" in shot:
+            t = shot["text"]
+            lines = fill(t["lines"])
+            opts = {"style": t.get("style", "outline"), "y": t.get("y"), "align": t.get("align", "center")}
+            overlay_text(png, lines, **opts)
+            current, layers = png, [(png, appear)]
+        elif "add" in shot:
+            if not lines:
+                raise ValueError(f"shot {i}: 'add' needs text on screen first")
+            new = os.path.join(tmp, f"new{i:02d}.png")
+            old = len(lines)
+            lines = lines + fill(shot["add"])
+            overlay_text(new, lines, skip=old, **opts)
+            overlay_text(png, lines, **opts)
+            layers = [(current, None), (new, appear)]
+            current = png
+        elif "cta" in shot:
+            overlay_cta(png, shot["cta"].format(**facts), facts, shot.get("y"), starred)
+            current, layers, lines = png, [(png, appear)], []
+        else:
+            if current is None:
+                raise ValueError("first shot needs text: every screen carries text")
+            layers = [(current, None)]
+        plans.append(layers)
+    return plans
 
 
 def main():
@@ -204,54 +296,48 @@ def main():
     spec = json.load(open(a.spec, encoding="utf-8"))
     facts = json.load(open(a.facts, encoding="utf-8"))
     placeholder = not facts.get("_status", "").startswith("APPROVED")
-    sat = 1.12 if spec["style"] == "A" else 1.05
+    sat = 1.12 if spec.get("style", "A") == "A" else 1.05
     os.makedirs(a.out, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="render-")
     segs, durs = [], []
     try:
-        for i, shot in enumerate(spec["shots"]):
+        plans = plan_text(spec, facts, tmp)
+        for i, (shot, layers) in enumerate(zip(spec["shots"], plans)):
             seg = os.path.join(tmp, f"seg{i:02d}.mp4")
             if shot.get("endcard"):
                 card = os.path.join(tmp, "endcard.png")
-                endcard_png(facts, shot.get("offer", "{cicilan}*").format(**facts), card)
+                endcard_png(facts, shot.get("offer", "{cicilan_short}*").format(**facts), card)
                 render_endcard(ff, find_src(a.raw, a.endcard_bg), card, shot["dur"], seg)
             else:
-                ov = None
-                if shot.get("text"):
-                    ov = os.path.join(tmp, f"text{i:02d}.png")
-                    lines = [l.format(**facts) for l in shot["text"]["lines"]]
-                    overlay_png(shot["text"]["kind"], lines, ov, shot["text"].get("y"), shot["text"].get("style"))
                 # Logo block per shot: spec default, overridable per shot ("navy", "white" or "none").
                 color = shot.get("logo", spec.get("logo", "navy"))
-                logo = None
                 if color != "none":
                     logo = os.path.join(tmp, f"logo-{color}.png")
                     if not os.path.exists(logo):
                         logo_png(color, logo)
-                fade_from = 0 if i == 0 else 0.2
-                render_shot(ff, find_src(a.raw, shot["src"]), shot["start"], shot["dur"], ov, logo, seg, sat, fade_from)
+                    layers = [(logo, None)] + layers
+                render_shot(ff, find_src(a.raw, shot["src"]), shot["start"], shot["dur"], layers, seg, sat)
             segs.append(seg)
             durs.append(shot["dur"])
 
+        # Join every segment with xfade; "cut" is a one-frame fade.
         inputs = sum((["-i", s] for s in segs), [])
         n = len(segs)
-        if spec["transition"] == "fade":
-            chain, prev, t = [], "[0:v]", durs[0]
-            for i in range(1, n):
-                off = t - FADE
-                chain.append(f"{prev}[{i}:v]xfade=transition=fade:duration={FADE}:offset={off:.3f}[x{i}]")
-                prev, t = f"[x{i}]", off + durs[i]
-            graph, total = ";".join(chain), t
-        else:
-            graph = "".join(f"[{i}:v]" for i in range(n)) + f"concat=n={n}:v=1:a=0[x{n - 1}]"
-            prev, total = f"[x{n - 1}]", sum(durs)
+        chain, prev, t = [], "[0:v]", durs[0]
+        for i in range(1, n):
+            kind, dur = TRANSITIONS[spec["shots"][i].get("transition", spec.get("transition", "cut"))]
+            off = t - dur
+            chain.append(f"{prev}[{i}:v]xfade=transition={kind}:duration={dur:.3f}:offset={off:.3f}[x{i}]")
+            prev, t = f"[x{i}]", off + durs[i]
+        graph, total = ";".join(chain) if chain else "[0:v]null[x0]", t
+        prev = prev if chain else "[x0]"
         extra = 0
         if placeholder:
             wm = os.path.join(tmp, "wm.png")
             watermark_png("DRAFT · DATA CONTOH", wm)
             inputs += ["-loop", "1", "-i", wm]
-            graph += f";{prev}[{n + extra}:v]overlay=0:0:shortest=1[wm]"
-            prev, extra = "[wm]", extra + 1
+            graph += f";{prev}[{n}:v]overlay=0:0:shortest=1[wm]"
+            prev, extra = "[wm]", 1
         graph += f";{prev}null[vout]"
         out = os.path.join(a.out, spec["name"] + ".mp4")
         run([ff, "-y", *inputs, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
