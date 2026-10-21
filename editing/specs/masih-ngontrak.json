@@ -1,0 +1,15 @@
+{
+  "name": "masih-ngontrak",
+  "title": "Masih ngontrak?",
+  "style": "A",
+  "transition": "cut",
+  "shots": [
+    {"src": "7a4298a5-7dda-4861-8946-55b1f5107d81.mp4", "start": 0.5, "dur": 2.2, "text": {"kind": "hook", "y": 0.13, "lines": ["Masih ngontrak?"]}},
+    {"src": "d10fec67-4791-4e3c-99b1-941592ad00e7.mp4", "start": 2.0, "dur": 2.0, "text": {"kind": "hook", "lines": ["Bayar sewa tiap bulan,", "tapi rumahnya", "bukan milikmu."]}},
+    {"src": "IMG_1585.MOV", "start": 0.0, "dur": 2.2, "text": {"kind": "hook", "lines": ["Saatnya punya", "rumah sendiri."]}},
+    {"src": "IMG_1590.MOV", "start": 2.6, "dur": 2.0},
+    {"src": "IMG_1374.MOV", "start": 8.0, "dur": 2.0, "text": {"kind": "label", "lines": ["2 lantai · {bedrooms}"]}},
+    {"src": "IMG_1381.MOV", "start": 6.0, "dur": 2.0, "text": {"kind": "banner", "lines": ["{cicilan}*"]}},
+    {"endcard": true, "dur": 2.8}
+  ]
+}
