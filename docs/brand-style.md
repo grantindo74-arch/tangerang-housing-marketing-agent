@@ -27,7 +27,18 @@ Values below were read from the design's element data on 2026-10-21 (pages 1 and
 - Navy on light skies, white on dark skies.
 - `editing/assets/logo-navy.png` and `logo-white.png` are transparent cut-outs of this block (icon + wordmark) from the 1080 px export. They're fine at this size; for anything bigger, export the icon from the design in Canva.
 
-## Hook box
+## Text on video (different from the covers)
+
+Team rules, 2026-10-21:
+
+- **Short.** One or two short pieces of info at a time, a few words each. This applies to post captions too.
+- **White on black** (TikTok-style box per line) or **black on white**. The sand box below is for thumbnails only, never on video.
+- **Middle of the screen**, not at the bottom.
+- **Emoji** in the text (🔑 🏡 😩 🔥 🛏️).
+- **Phone number: green on white.**
+- End card: logo, one offer, WhatsApp number. Nothing else.
+
+## Hook box (thumbnails only)
 
 - Rounded rectangle, **931 × 244 px**, at x 75 / y 334 (centred, upper third), corner radius about 37 px, sand `#D9AD7F` at 77% opacity.
 - Text: **bold, 54–59 px, navy `#001F4B`, centred, line height 1.4**, two lines.
